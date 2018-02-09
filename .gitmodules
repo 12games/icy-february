@@ -1,0 +1,6 @@
+[submodule "lib/imgui"]
+	path = lib/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "lib/system.io"]
+	path = lib/system.io
+	url = https://github.com/wtrsltnk/system.io.git
