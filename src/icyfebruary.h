@@ -18,6 +18,7 @@ enum class MenuModes
 
 class IcyFebruary : public Game
 {
+    bool _showPhysicsDebug;
     glm::mat4 _proj, _view;
     glm::vec3 _pos;
 

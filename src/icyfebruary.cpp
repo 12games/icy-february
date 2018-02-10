@@ -20,7 +20,8 @@ Game &Game::Instantiate(int argc, char *argv[])
 }
 
 IcyFebruary::IcyFebruary(int argc, char *argv[])
-    : _floor(_boxShader), _character(_boxShader)
+    : _floor(_boxShader), _character(_boxShader),
+      _showPhysicsDebug(true)
 {
     System::IO::FileInfo exe(argv[0]);
     _settingsDir = exe.Directory().FullName();
@@ -193,8 +194,12 @@ void IcyFebruary::Render()
         _character.render();
         glFrontFace(GL_CCW);
     }
-    CapabilityGuard depthTest(GL_DEPTH_TEST, false);
-    _physics.DebugDraw(_proj, _view);
+
+    if (_showPhysicsDebug)
+    {
+        CapabilityGuard depthTest(GL_DEPTH_TEST, false);
+        _physics.DebugDraw(_proj, _view);
+    }
 }
 
 void IcyFebruary::RenderUi()
@@ -217,6 +222,7 @@ void IcyFebruary::RenderUi()
             ImGui::SliderFloat("Cam X", &(_camOffset[0]), -10.0f, 10.0f);
             ImGui::SliderFloat("Cam Y", &(_camOffset[1]), -10.0f, 10.0f);
             ImGui::SliderFloat("Cam Z", &(_camOffset[2]), -10.0f, 10.0f);
+            ImGui::Checkbox("Show Physics Debug", &_showPhysicsDebug);
             ImGui::End();
         }
         return;
