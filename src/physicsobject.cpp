@@ -6,7 +6,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtc/epsilon.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <numeric>
 
 class ImplPhysicsObject : public btMotionState, public PhysicsObject
 {
@@ -39,6 +41,102 @@ glm::mat4 const &ImplPhysicsObject::getMatrix() const
 btRigidBody *ImplPhysicsObject::getRigidBody()
 {
     return _rigidBody;
+}
+
+class CharacterPhysicsObject : public CharacterObject, public ImplPhysicsObject
+{
+    float _forward;
+    float _left;
+
+public:
+    CharacterPhysicsObject();
+
+    virtual void Update();
+    virtual void Forward(float amount);
+    virtual void Left(float amount);
+    virtual void Jump();
+    virtual bool IsJumping();
+
+    virtual glm::mat4 const &getMatrix() const;
+    virtual class btRigidBody *getRigidBody();
+};
+
+CharacterPhysicsObject::CharacterPhysicsObject()
+    : _forward(0.0f), _left(0.0f)
+{
+}
+
+void CharacterPhysicsObject::Update()
+{
+    if (_rigidBody == nullptr)
+    {
+        return;
+    }
+
+    auto dir = btVector3(_forward, 0.0f, _left);
+
+    if (dir.length2() < std::numeric_limits<float>::epsilon())
+    {
+        return;
+    }
+
+    float speed = 10.0f;
+
+    dir = dir.normalize();
+    auto up = btVector3(0.0f, 1.0f, 0.0f);
+    auto side = dir.cross(up);
+    up = dir.cross(side);
+    btMatrix3x3 m;
+    m.setValue(
+        dir.x(), dir.y(), dir.z(),
+        side.x(), side.y(), side.z(),
+        up.x(), up.y(), up.z());
+    btQuaternion qRot;
+    m.getRotation(qRot);
+    static btQuaternion currRot = qRot;
+    auto t = this->_rigidBody->getWorldTransform();
+    t.setRotation(currRot = currRot.slerp(qRot, 0.1f));
+    this->_rigidBody->setWorldTransform(t);
+
+    if (glm::abs(_left) > 0.0001f || glm::abs(_forward) > 0.0001f)
+    {
+        auto velocity = this->_rigidBody->getLinearVelocity();
+        auto v = btVector3(-_left * speed, -_forward * speed, velocity.z());
+        this->_rigidBody->setLinearVelocity(v);
+    }
+}
+
+void CharacterPhysicsObject::Forward(float amount)
+{
+    _forward = amount;
+}
+
+void CharacterPhysicsObject::Left(float amount)
+{
+    _left = amount;
+}
+
+void CharacterPhysicsObject::Jump()
+{
+    auto velocity = this->_rigidBody->getLinearVelocity();
+    velocity.setZ(9.8f);
+    _rigidBody->setLinearVelocity(velocity);
+}
+
+bool CharacterPhysicsObject::IsJumping()
+{
+    auto velocity = this->_rigidBody->getLinearVelocity();
+    return glm::abs(velocity.z()) > 0.01f;
+}
+
+glm::mat4 const &CharacterPhysicsObject::getMatrix() const
+{
+    return ImplPhysicsObject::getMatrix();
+}
+
+btRigidBody *CharacterPhysicsObject::getRigidBody()
+{
+    return ImplPhysicsObject::getRigidBody();
 }
 
 class CarPhysicsObject : public CarObject, public ImplPhysicsObject
@@ -258,6 +356,8 @@ PhysicsObject *PhysicsObjectBuilder::Build()
     obj->_rigidBody->setFriction(_friction);
     obj->_rigidBody->setDamping(_linearDamping, _angularDamping);
 
+    _manager.AddObject(obj);
+
     return obj;
 }
 
@@ -348,6 +448,32 @@ CarObject *PhysicsObjectBuilder::BuildCar()
 
     obj->SetVehicle(vehicle, vehicleRayCaster);
 
+    _manager.AddObject((ImplPhysicsObject *)obj);
+
+    return obj;
+}
+
+CharacterObject *PhysicsObjectBuilder::BuildCharacter()
+{
+    btVector3 localInertia(0, 0, 0);
+    if (_mass != 0.0f)
+    {
+        _shape->calculateLocalInertia(_mass, localInertia);
+    }
+
+    auto obj = new CharacterPhysicsObject();
+    obj->_matrix = glm::toMat4(_initialRot) * glm::translate(glm::mat4(1.0f), _initialPos);
+
+    auto rbInfo = btRigidBody::btRigidBodyConstructionInfo(_mass, obj, _shape, localInertia);
+    obj->_rigidBody = new btRigidBody(rbInfo);
+    obj->_rigidBody->setActivationState(DISABLE_DEACTIVATION);
+
+    obj->_rigidBody->setFriction(_friction);
+    obj->_rigidBody->setDamping(_linearDamping, _angularDamping);
+    //    obj->_rigidBody->setAngularFactor(btVector3(0,0,1));
+
+    _manager.AddObject((ImplPhysicsObject *)obj);
+
     return obj;
 }
 
@@ -362,6 +488,17 @@ PhysicsObjectBuilder &PhysicsObjectBuilder::Box(glm::vec3 const &size)
 PhysicsObjectBuilder &PhysicsObjectBuilder::Sphere(float radius)
 {
     this->_shape = new btSphereShape(radius);
+
+    return (*this);
+}
+
+PhysicsObjectBuilder &PhysicsObjectBuilder::Capsule(float radius, float height, glm::vec3 const &centerOfMass)
+{
+    btVector3 p[3] = {
+        btVector3(centerOfMass.x, centerOfMass.y - (height / 2.0f), centerOfMass.z),
+        btVector3(centerOfMass.x, centerOfMass.y + (height / 2.0f), centerOfMass.z)};
+    float r[3] = {radius, radius};
+    this->_shape = new btMultiSphereShape(p, r, 2);
 
     return (*this);
 }

@@ -7,25 +7,21 @@
 
 enum class UserInputActions
 {
-    StartEngine,
-    StopEngine,
     SpeedUp,
     SpeedDown,
     SteerLeft,
     SteerRight,
-    Brake,
+    Jump,
 
     Count
 };
 
 static const char *UserInputActionNames[] = {
-    "StartEngine",
-    "StopEngine",
     "SpeedUp",
     "SpeedDown",
     "SteerLeft",
     "SteerRight",
-    "Brake",
+    "Jump",
 };
 
 struct UserInputEvent

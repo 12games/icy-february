@@ -5,9 +5,7 @@
 
 #include "game.h"
 #include "gl-color-normal-position-vertex.h"
-#include "gl-masked-textures.h"
 #include "physics.h"
-#include "updatingtexture.h"
 
 #include <string>
 
@@ -26,26 +24,14 @@ class IcyFebruary : public Game
     std::string _settingsDir;
     MenuModes _menuMode;
 
-    MaskedTexturesBuffer::ShaderType _floorShader;
-    MaskedTexturesBuffer::BufferType _floor;
+    BufferType _floor;
     ShaderType _boxShader;
-    BufferType _car;
-    BufferType _truck;
-    BufferType _wheelLeft;
-    BufferType _wheelRight;
-    BufferType _tree;
     float _camOffset[3];
-
-    unsigned int _snowTexture;
-    unsigned int _grassTexture;
-    unsigned int _asphaltTexture;
-    UpdatingTexture _maskTexture;
 
     PhysicsManager _physics;
     PhysicsObject *_floorObject;
-    CarObject *_carObject;
-    std::vector<PhysicsObject *> _treeObjects;
-    std::vector<glm::vec2> _treeLocations;
+    BufferType _character;
+    CharacterObject *_characterObject;
 
     unsigned int uploadTexture(std::string const &filename);
 

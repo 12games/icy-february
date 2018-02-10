@@ -19,7 +19,6 @@ add_executable(icy-february
     include/game.h
     include/gl-color-position-vertex.h
     include/gl-color-normal-position-vertex.h
-    include/gl-masked-textures.h
     include/gl-obj-renderer.h
     include/tiny_obj_loader.h
     include/capabilityguard.h
@@ -41,8 +40,6 @@ add_executable(icy-february
     src/gameobject.cpp
     src/gameobject.h
     src/stb_image.h
-    src/updatingtexture.cpp
-    src/updatingtexture.h
     )
 
 target_include_directories(icy-february

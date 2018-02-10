@@ -1,5 +1,5 @@
 # Progress
 
-## February 9
+## February 10
 ![Screenshot 01](progress/screenshot01.png)
-Nothing yet
+Test character with "character controller" added, you can jump over the obstacle

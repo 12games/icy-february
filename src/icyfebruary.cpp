@@ -20,8 +20,7 @@ Game &Game::Instantiate(int argc, char *argv[])
 }
 
 IcyFebruary::IcyFebruary(int argc, char *argv[])
-    : _floor(_floorShader), _car(_boxShader), _truck(_boxShader),
-      _wheelLeft(_boxShader), _wheelRight(_boxShader), _tree(_boxShader)
+    : _floor(_boxShader), _character(_boxShader)
 {
     System::IO::FileInfo exe(argv[0]);
     _settingsDir = exe.Directory().FullName();
@@ -57,21 +56,12 @@ unsigned int IcyFebruary::uploadTexture(std::string const &filename)
 
 bool IcyFebruary::Setup()
 {
-    _camOffset[0] = _camOffset[1] = _camOffset[2] = 5.0f;
+    _camOffset[0] = 0.0f;
+    _camOffset[1] = _camOffset[2] = 10.0f;
 
     _userInput.ReadKeyMappings(System::IO::Path::Combine(_settingsDir, KEYMAP_FILE));
 
-    glm::vec2 groundSize(50.0f);
-
-    glActiveTexture(GL_TEXTURE0);
-    _asphaltTexture = uploadTexture("../01-snowy-january/assets/asphalt.bmp");
-    glActiveTexture(GL_TEXTURE1);
-    _grassTexture = uploadTexture("../01-snowy-january/assets/grass.bmp");
-    glActiveTexture(GL_TEXTURE2);
-    _snowTexture = uploadTexture("../01-snowy-january/assets/snow.bmp");
-    glActiveTexture(GL_TEXTURE3);
-    _maskTexture.loadTexture("../01-snowy-january/assets/level.png");
-    _maskTexture.setPlaneSize(groundSize);
+    glm::vec2 groundSize(50.0f, 10.0f);
 
     ImGuiIO &io = ImGui::GetIO();
     ImFont *font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\tahoma.ttf", 18.0f, NULL);
@@ -87,62 +77,33 @@ bool IcyFebruary::Setup()
     glClearColor(0.56f, 0.7f, 0.67f, 1.0f);
 
     // Setting up the shaders
-    _floorShader.compileDefaultShader();
     _boxShader.compileDefaultShader();
 
     // Setting up the vertex buffer
-    _floor.planeTriangleFan(groundSize, glm::vec2(5.12f))
+    _floor.cubeTriangles()
+        .fillColor(glm::vec4(0.0f, .0f, 0.5f, 1.0f))
+        .scale(glm::vec3(groundSize.x, groundSize.y, 0.1f))
         .setup();
 
     _floorObject = PhysicsObjectBuilder(_physics)
                        .Box(glm::vec3(groundSize.x, groundSize.y, 0.1f))
                        .Mass(0.0f)
                        .Build();
-    _physics.AddObject(_floorObject);
 
-    _car.cubeTriangles()
-        .scale(glm::vec3(1.0f, 2.0f, 1.0f))
-        .fillColor(glm::vec4(0.0f, 0.3f, 0.5f, 1.0f))
+    _characterObject = PhysicsObjectBuilder(_physics)
+                           .Capsule(1.0f, 2.2f, glm::vec3(0.0f, -1.5f, 0.0f))
+                           .InitialPosition(glm::vec3(0.0f, 0.0f, 1.0f))
+                           .Mass(1000.0f)
+                           .BuildCharacter();
+
+    PhysicsObjectBuilder(_physics)
+        .Box(glm::vec3(2.0f, 10.0f, 2.0f))
+        .InitialPosition(glm::vec3(-5.0f, 0.0f, 1.0f))
+        .Mass(0.0f)
+        .Build();
+
+    _character.loadObj("../02-icy-february/assets/hjmediastudios_-_office_drone.obj", "../02-icy-february/assets/", "Drone_Skin_Drone")
         .setup();
-
-    _carObject = PhysicsObjectBuilder(_physics)
-                     .Box(glm::vec3(1.0f, 2.0f, 1.0f))
-                     .Mass(1000.0f)
-                     .InitialPosition(glm::vec3(0.0f, 0.0f, 2.0f))
-                     .BuildCar();
-    _physics.AddObject(_carObject);
-
-    _truck.loadObj("../01-snowy-january/assets/mini-dozer.obj", "../01-snowy-january/assets/", "Truck_Center")
-        .scale(glm::vec3(0.2f))
-        .setup(GL_TRIANGLES);
-
-    _wheelLeft.loadObj("../01-snowy-january/assets/mini-dozer.obj", "../01-snowy-january/assets/", "Wheel.001_Left")
-        .scale(glm::vec3(0.2f))
-        .setup(GL_TRIANGLES);
-
-    _wheelRight.loadObj("../01-snowy-january/assets/mini-dozer.obj", "../01-snowy-january/assets/", "Wheel.000_Right")
-        .scale(glm::vec3(0.2f))
-        .setup(GL_TRIANGLES);
-
-    _tree.loadObj("../01-snowy-january/assets/tree.obj", "../01-snowy-january/assets/", "Cylinder")
-        .scale(glm::vec3(0.2f))
-        .setup(GL_TRIANGLES);
-
-    _treeLocations = _maskTexture.listBluePixels();
-
-    auto builder = PhysicsObjectBuilder(_physics)
-                       .Cone(1.0f, 4.0f)
-                       .Mass(0.0f)
-                       .InitialRotation(glm::quat(glm::vec3(glm::radians(90.0f), 0.0f, 0.0f)));
-
-    for (auto pos : _treeLocations)
-    {
-        auto obj = builder
-                       .InitialPosition(glm::vec3(pos.x, 2.2f, pos.y))
-                       .Build();
-        _physics.AddObject(obj);
-        _treeObjects.push_back(obj);
-    }
 
     _physics.InitDebugDraw();
 
@@ -166,48 +127,49 @@ void IcyFebruary::Update(int dt)
         return;
     }
 
-    if (_carObject->Speed() > 0)
-    {
-        _maskTexture.paintOn(_carObject->getMatrix());
-    }
-
-    _pos = glm::vec3(_carObject->getMatrix()[3].x, _carObject->getMatrix()[3].y, 0.0f);
-    _view = glm::lookAt(_pos + glm::vec3(_camOffset[0], _camOffset[1], _camOffset[2]), _pos, glm::vec3(0.0f, 0.0f, 1.0f));
-
-    if (_userInput.ActionState(UserInputActions::StartEngine))
-    {
-        _carObject->StartEngine();
-    }
-    else if (_userInput.ActionState(UserInputActions::StopEngine))
-    {
-        _carObject->StopEngine();
-    }
-
     if (_userInput.ActionState(UserInputActions::SpeedUp))
     {
-        _carObject->ChangeSpeed(1.0f);
+        _characterObject->Forward(1.0f);
     }
     else if (_userInput.ActionState(UserInputActions::SpeedDown))
     {
-        _carObject->ChangeSpeed(-1.0f);
+        _characterObject->Forward(-1.0f);
+    }
+    else
+    {
+        _characterObject->Forward(0.0f);
     }
 
     if (_userInput.ActionState(UserInputActions::SteerLeft))
     {
-        _carObject->Steer(0.01f);
+        _characterObject->Left(-1.0f);
     }
     else if (_userInput.ActionState(UserInputActions::SteerRight))
     {
-        _carObject->Steer(-0.01f);
+        _characterObject->Left(1.0f);
     }
-
-    if (_userInput.ActionState(UserInputActions::Brake))
+    else
     {
-        _carObject->Brake();
+        _characterObject->Left(0.0f);
     }
 
-    _carObject->Update();
+    static bool isJumping = false;
+    if (isJumping == false && _userInput.ActionState(UserInputActions::Jump))
+    {
+        _characterObject->Jump();
+        isJumping = true;
+    }
+    else
+    {
+        isJumping = _characterObject->IsJumping();
+    }
+
+    _characterObject->Update();
+
     _physics.Step(dt / 1000.0f);
+
+    _pos.x = _characterObject->getMatrix()[3].x;
+    _view = glm::lookAt(_pos + glm::vec3(_camOffset[0], _camOffset[1], _camOffset[2]), _pos, glm::vec3(0.0f, 0.0f, 1.0f));
 }
 
 static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
@@ -218,50 +180,21 @@ void IcyFebruary::Render()
 
     glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear Screen And Depth Buffer
-
-    // Select shader
-    _floorShader.use();
-
     {
-        CapabilityGuard texture2d(GL_TEXTURE_2D, true);
-
-        _floorShader.setupMatrices(_proj, _view, _floorObject->getMatrix());
-        _floorShader.setupTextures(_asphaltTexture, _grassTexture, _snowTexture, _maskTexture.textureId());
-        _floor.render();
-    }
-
-    {
-        CapabilityGuard cullFace(GL_CULL_FACE, false);
         CapabilityGuard depthTest(GL_DEPTH_TEST, true);
-
         // Select shader
         _boxShader.use();
 
+        _boxShader.setupMatrices(_proj, _view, _floorObject->getMatrix());
+        _floor.render();
+
         glFrontFace(GL_CW);
-        _boxShader.setupMatrices(_proj, _view, _carObject->getMatrix());
-        _truck.render();
-
-        _boxShader.setupMatrices(_proj, _view, _carObject->getWheelMatrix(0));
-        _wheelRight.render();
-
-        _boxShader.setupMatrices(_proj, _view, _carObject->getWheelMatrix(1));
-        _wheelLeft.render();
-
-        _boxShader.setupMatrices(_proj, _view, _carObject->getWheelMatrix(2));
-        _wheelRight.render();
-
-        _boxShader.setupMatrices(_proj, _view, _carObject->getWheelMatrix(3));
-        _wheelLeft.render();
-
-        for (auto tree : _treeObjects)
-        {
-            _boxShader.setupMatrices(_proj, _view, tree->getMatrix());
-            _tree.render();
-        }
+        _boxShader.setupMatrices(_proj, _view, _characterObject->getMatrix());
+        _character.render();
         glFrontFace(GL_CCW);
     }
     CapabilityGuard depthTest(GL_DEPTH_TEST, false);
-    //_physics.DebugDraw(_proj, _view);
+    _physics.DebugDraw(_proj, _view);
 }
 
 void IcyFebruary::RenderUi()
@@ -281,9 +214,9 @@ void IcyFebruary::RenderUi()
             {
                 _menuMode = MenuModes::MainMenu;
             }
-            ImGui::SliderFloat("Cam X", &(_camOffset[0]), -5.0f, 5.0f);
-            ImGui::SliderFloat("Cam Y", &(_camOffset[1]), -5.0f, 5.0f);
-            ImGui::SliderFloat("Cam Z", &(_camOffset[2]), -5.0f, 5.0f);
+            ImGui::SliderFloat("Cam X", &(_camOffset[0]), -10.0f, 10.0f);
+            ImGui::SliderFloat("Cam Y", &(_camOffset[1]), -10.0f, 10.0f);
+            ImGui::SliderFloat("Cam Z", &(_camOffset[2]), -10.0f, 10.0f);
             ImGui::End();
         }
         return;

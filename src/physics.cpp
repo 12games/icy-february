@@ -46,7 +46,7 @@ PhysicsManager::~PhysicsManager()
 
 void PhysicsManager::Step(float gameTime)
 {
-    this->_dynamicsWorld->stepSimulation(gameTime, 1);
+    this->_dynamicsWorld->stepSimulation(1.0f/60.0f, 1);
     int numManifolds = this->_dynamicsWorld->getDispatcher()->getNumManifolds();
 
     for (int i = 0; i < numManifolds; i++)
