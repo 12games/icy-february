@@ -4,15 +4,18 @@
 #include <cmath>
 #include <fstream>
 #include <glad/glad.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <map>
 #include <sstream>
 #include <vector>
 
-#if FALSE
+#if TRUE
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#else
 namespace glm {
 
 struct vec3
@@ -471,7 +474,6 @@ public:
 
 class BufferType
 {
-    const ShaderType &_shader;
     int _vertexCount;
     std::vector<VertexType> _verts;
     glm::vec4 _nextColor;
@@ -482,12 +484,84 @@ class BufferType
     std::map<int, int> _faces;
 
 public:
-    BufferType(ShaderType const &shader)
-        : _shader(shader), _vertexCount(0), _vertexArrayId(0), _vertexBufferId(0), _drawMode(GL_TRIANGLES),
+    BufferType()
+        : _vertexCount(0), _vertexArrayId(0), _vertexBufferId(0), _drawMode(GL_TRIANGLES),
           _nextColor(glm::vec4(1.0f))
     {}
 
     virtual ~BufferType() {}
+
+    bool setup(ShaderType const *shader)
+    {
+        return setup(shader, _drawMode);
+    }
+
+    bool setup(ShaderType const *shader, GLenum mode)
+    {
+        if (shader == nullptr)
+        {
+            return false;
+        }
+
+        // check if the buffer was already setup
+        if (_vertexArrayId != 0 || _vertexBufferId != 0)
+        {
+            return false;
+        }
+
+        _drawMode = mode;
+        _vertexCount = _verts.size();
+
+        glGenVertexArrays(1, &_vertexArrayId);
+        glGenBuffers(1, &_vertexBufferId);
+
+        glBindVertexArray(_vertexArrayId);
+        glBindBuffer(GL_ARRAY_BUFFER, _vertexBufferId);
+
+        glBufferData(GL_ARRAY_BUFFER, GLsizeiptr(_verts.size() * sizeof(VertexType)), 0, GL_STATIC_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, GLsizeiptr(_verts.size() * sizeof(VertexType)), reinterpret_cast<const GLvoid *>(&_verts[0]));
+
+        shader->setupAttributes();
+
+        glBindVertexArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        _verts.clear();
+
+        return true;
+    }
+
+    void render()
+    {
+        glBindVertexArray(_vertexArrayId);
+        if (_faces.empty())
+        {
+            glDrawArrays(_drawMode, 0, _vertexCount);
+        }
+        else
+        {
+            for (auto pair : _faces)
+            {
+                glDrawArrays(_drawMode, pair.first, pair.second);
+            }
+        }
+        glBindVertexArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    void cleanup()
+    {
+        if (_vertexBufferId != 0)
+        {
+            glDeleteBuffers(1, &_vertexBufferId);
+            _vertexBufferId = 0;
+        }
+        if (_vertexArrayId != 0)
+        {
+            glDeleteVertexArrays(1, &_vertexArrayId);
+            _vertexArrayId = 0;
+        }
+    }
 
     std::vector<VertexType> &verts()
     {
@@ -715,67 +789,6 @@ public:
     }
 
 #endif
-
-    bool setup()
-    {
-        return setup(_drawMode);
-    }
-
-    bool setup(GLenum mode)
-    {
-        _drawMode = mode;
-        _vertexCount = _verts.size();
-
-        glGenVertexArrays(1, &_vertexArrayId);
-        glGenBuffers(1, &_vertexBufferId);
-
-        glBindVertexArray(_vertexArrayId);
-        glBindBuffer(GL_ARRAY_BUFFER, _vertexBufferId);
-
-        glBufferData(GL_ARRAY_BUFFER, GLsizeiptr(_verts.size() * sizeof(VertexType)), 0, GL_STATIC_DRAW);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, GLsizeiptr(_verts.size() * sizeof(VertexType)), reinterpret_cast<const GLvoid *>(&_verts[0]));
-
-        _shader.setupAttributes();
-
-        glBindVertexArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        _verts.clear();
-
-        return true;
-    }
-
-    void render()
-    {
-        glBindVertexArray(_vertexArrayId);
-        if (_faces.empty())
-        {
-            glDrawArrays(_drawMode, 0, _vertexCount);
-        }
-        else
-        {
-            for (auto pair : _faces)
-            {
-                glDrawArrays(_drawMode, pair.first, pair.second);
-            }
-        }
-        glBindVertexArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-    }
-
-    void cleanup()
-    {
-        if (_vertexBufferId != 0)
-        {
-            glDeleteBuffers(1, &_vertexBufferId);
-            _vertexBufferId = 0;
-        }
-        if (_vertexArrayId != 0)
-        {
-            glDeleteVertexArrays(1, &_vertexArrayId);
-            _vertexArrayId = 0;
-        }
-    }
 };
 
 #endif // GLCOLORNORMALPOSITIONVERTEX_H

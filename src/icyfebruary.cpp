@@ -12,6 +12,56 @@
 
 #define KEYMAP_FILE "icyfebruary.keymap"
 
+ColorPosition::ShaderType CreationObject::_shader;
+GLuint ColorPosition::ShaderType::defaultShader = 0;
+
+void CreationObject::rebuildBuffer()
+{
+    _buffer.cleanup();
+    _buffer.setDrawMode(GL_LINES);
+    _buffer.color(glm::vec4(255.0f));
+
+    _buffer.vertex(glm::vec3(_size.x, _size.y, _size.z));
+    _buffer.vertex(glm::vec3(_size.x, _size.y, -_size.z));
+
+    _buffer.vertex(glm::vec3(_size.x, -_size.y, _size.z));
+    _buffer.vertex(glm::vec3(_size.x, -_size.y, -_size.z));
+
+    _buffer.vertex(glm::vec3(-_size.x, _size.y, _size.z));
+    _buffer.vertex(glm::vec3(-_size.x, _size.y, -_size.z));
+
+    _buffer.vertex(glm::vec3(-_size.x, -_size.y, _size.z));
+    _buffer.vertex(glm::vec3(-_size.x, -_size.y, -_size.z));
+
+
+    _buffer.vertex(glm::vec3(_size.x,  _size.y, _size.z));
+    _buffer.vertex(glm::vec3(_size.x, -_size.y, _size.z));
+
+    _buffer.vertex(glm::vec3(-_size.x,  _size.y, _size.z));
+    _buffer.vertex(glm::vec3(-_size.x, -_size.y, _size.z));
+
+    _buffer.vertex(glm::vec3(_size.x,  _size.y, -_size.z));
+    _buffer.vertex(glm::vec3(_size.x, -_size.y, -_size.z));
+
+    _buffer.vertex(glm::vec3(-_size.x,  _size.y, -_size.z));
+    _buffer.vertex(glm::vec3(-_size.x, -_size.y, -_size.z));
+
+
+    _buffer.vertex(glm::vec3( _size.x, _size.y, _size.z));
+    _buffer.vertex(glm::vec3(-_size.x, _size.y, _size.z));
+
+    _buffer.vertex(glm::vec3( _size.x, -_size.y, _size.z));
+    _buffer.vertex(glm::vec3(-_size.x, -_size.y, _size.z));
+
+    _buffer.vertex(glm::vec3( _size.x, _size.y, -_size.z));
+    _buffer.vertex(glm::vec3(-_size.x, _size.y, -_size.z));
+
+    _buffer.vertex(glm::vec3( _size.x, -_size.y, -_size.z));
+    _buffer.vertex(glm::vec3(-_size.x, -_size.y, -_size.z));
+
+    _buffer.setup(&_shader);
+}
+
 Game &Game::Instantiate(int argc, char *argv[])
 {
     static IcyFebruary game(argc, argv);
@@ -20,8 +70,7 @@ Game &Game::Instantiate(int argc, char *argv[])
 }
 
 IcyFebruary::IcyFebruary(int argc, char *argv[])
-    : _floor(_boxShader), _character(_boxShader),
-      _showPhysicsDebug(true)
+    : _showPhysicsDebug(true), _create(nullptr)
 {
     System::IO::FileInfo exe(argv[0]);
     _settingsDir = exe.Directory().FullName();
@@ -80,11 +129,13 @@ bool IcyFebruary::Setup()
     // Setting up the shaders
     _boxShader.compileDefaultShader();
 
+    //    CreationObject::_shader.compileDefaultShader();
+
     // Setting up the vertex buffer
     _floor.cubeTriangles()
         .fillColor(glm::vec4(0.0f, .0f, 0.5f, 1.0f))
         .scale(glm::vec3(groundSize.x, groundSize.y, 0.1f))
-        .setup();
+        .setup(&_boxShader);
 
     _floorObject = PhysicsObjectBuilder(_physics)
                        .Box(glm::vec3(groundSize.x, groundSize.y, 0.1f))
@@ -104,9 +155,14 @@ bool IcyFebruary::Setup()
         .Build();
 
     _character.loadObj("../02-icy-february/assets/hjmediastudios_-_office_drone.obj", "../02-icy-february/assets/", "Drone_Skin_Drone")
-        .setup();
+        .setup(&_boxShader);
+
+    _fridge.loadObj("../02-icy-february/assets/fridge.obj", "../02-icy-february/assets/", "Cube")
+        .setup(&_boxShader);
 
     _physics.InitDebugDraw();
+
+    CreationObject::_shader.compileDefaultShader();
 
     return true;
 }
@@ -192,6 +248,8 @@ void IcyFebruary::Render()
         glFrontFace(GL_CW);
         _boxShader.setupMatrices(_proj, _view, _characterObject->getMatrix());
         _character.render();
+        _boxShader.setupMatrices(_proj, _view, glm::mat4(1.0f));
+        _fridge.render();
         glFrontFace(GL_CCW);
     }
 
@@ -199,6 +257,13 @@ void IcyFebruary::Render()
     {
         CapabilityGuard depthTest(GL_DEPTH_TEST, false);
         _physics.DebugDraw(_proj, _view);
+    }
+
+    if (_create != nullptr)
+    {
+        _create->_shader.use();
+        _create->_shader.setupMatrices(_proj, _view, glm::translate(glm::mat4(1.0f), _create->_pos));
+        _create->_buffer.render();
     }
 }
 
@@ -219,10 +284,51 @@ void IcyFebruary::RenderUi()
             {
                 _menuMode = MenuModes::MainMenu;
             }
-            ImGui::SliderFloat("Cam X", &(_camOffset[0]), -10.0f, 10.0f);
-            ImGui::SliderFloat("Cam Y", &(_camOffset[1]), -10.0f, 10.0f);
-            ImGui::SliderFloat("Cam Z", &(_camOffset[2]), -10.0f, 10.0f);
+            ImGui::SliderFloat("Cam X", &(_camOffset[0]), -30.0f, 30.0f);
+            ImGui::SliderFloat("Cam Y", &(_camOffset[1]), -30.0f, 30.0f);
+            ImGui::SliderFloat("Cam Z", &(_camOffset[2]), -30.0f, 30.0f);
             ImGui::Checkbox("Show Physics Debug", &_showPhysicsDebug);
+
+            if (_create != nullptr)
+            {
+                bool creatChanged = false;
+                ImGui::SliderFloat("Create Object pos X", &(_create->_pos[0]), -200.0f, 200.0f);
+                ImGui::SliderFloat("Create Object pos Y", &(_create->_pos[1]), -200.0f, 200.0f);
+                ImGui::SliderFloat("Create Object pos Z", &(_create->_pos[2]), -200.0f, 200.0f);
+                if (ImGui::SliderFloat("Create Object size X", &(_create->_size[0]), 0.1f, 50.0f)) creatChanged = true;
+                if (ImGui::SliderFloat("Create Object size Y", &(_create->_size[1]), 0.1f, 50.0f)) creatChanged = true;
+                if (ImGui::SliderFloat("Create Object size Z", &(_create->_size[2]), 0.1f, 50.0f)) creatChanged = true;
+
+                if (creatChanged)
+                {
+                    _create->rebuildBuffer();
+                }
+                else
+                {
+                    if (ImGui::Button("Create"))
+                    {
+                        PhysicsObjectBuilder(_physics)
+                            .Box(_create->_size * 2.0f)
+                            .InitialPosition(_create->_pos)
+                            .Mass(0.0f)
+                            .Build();
+
+                        _create->_size = glm::vec3(5.0f);
+                        _create->_pos = glm::vec3(0.0f);
+                        _create->rebuildBuffer();
+                    }
+                }
+            }
+            else
+            {
+                if (ImGui::Button("New object"))
+                {
+                    _create = new CreationObject();
+                    _create->_size = glm::vec3(5.0f);
+                    _create->rebuildBuffer();
+                }
+            }
+
             ImGui::End();
         }
         return;

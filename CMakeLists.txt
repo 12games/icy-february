@@ -19,7 +19,7 @@ add_executable(icy-february
     include/game.h
     include/gl-color-position-vertex.h
     include/gl-color-normal-position-vertex.h
-    include/gl-obj-renderer.h
+    include/tiny_gltf_loader.h
     include/tiny_obj_loader.h
     include/capabilityguard.h
     lib/imgui/imgui.cpp
