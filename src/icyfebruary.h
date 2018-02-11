@@ -39,7 +39,6 @@ class IcyFebruary : public Game
     std::string _settingsDir;
     MenuModes _menuMode;
 
-    BufferType _floor;
     ShaderType _boxShader;
     float _camOffset[3];
 

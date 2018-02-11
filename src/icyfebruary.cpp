@@ -107,11 +107,10 @@ unsigned int IcyFebruary::uploadTexture(std::string const &filename)
 bool IcyFebruary::Setup()
 {
     _camOffset[0] = 0.0f;
-    _camOffset[1] = _camOffset[2] = 10.0f;
+    _camOffset[1] = 30.0f;
+    _camOffset[2] = 10.0f;
 
     _userInput.ReadKeyMappings(System::IO::Path::Combine(_settingsDir, KEYMAP_FILE));
-
-    glm::vec2 groundSize(50.0f, 10.0f);
 
     ImGuiIO &io = ImGui::GetIO();
     ImFont *font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\tahoma.ttf", 18.0f, NULL);
@@ -131,14 +130,8 @@ bool IcyFebruary::Setup()
 
     //    CreationObject::_shader.compileDefaultShader();
 
-    // Setting up the vertex buffer
-    _floor.cubeTriangles()
-        .fillColor(glm::vec4(0.0f, .0f, 0.5f, 1.0f))
-        .scale(glm::vec3(groundSize.x, groundSize.y, 0.1f))
-        .setup(&_boxShader);
-
     _floorObject = PhysicsObjectBuilder(_physics)
-                       .Box(glm::vec3(groundSize.x, groundSize.y, 0.1f))
+                       .Box(glm::vec3(40.0f, 20.0f, 0.1f))
                        .Mass(0.0f)
                        .Build();
 
@@ -242,9 +235,6 @@ void IcyFebruary::Render()
         // Select shader
         _boxShader.use();
 
-        _boxShader.setupMatrices(_proj, _view, _floorObject->getMatrix());
-        _floor.render();
-
         glFrontFace(GL_CW);
         _boxShader.setupMatrices(_proj, _view, _characterObject->getMatrix());
         _character.render();
@@ -292,12 +282,13 @@ void IcyFebruary::RenderUi()
             if (_create != nullptr)
             {
                 bool creatChanged = false;
-                ImGui::SliderFloat("Create Object pos X", &(_create->_pos[0]), -200.0f, 200.0f);
-                ImGui::SliderFloat("Create Object pos Y", &(_create->_pos[1]), -200.0f, 200.0f);
-                ImGui::SliderFloat("Create Object pos Z", &(_create->_pos[2]), -200.0f, 200.0f);
-                if (ImGui::SliderFloat("Create Object size X", &(_create->_size[0]), 0.1f, 50.0f)) creatChanged = true;
-                if (ImGui::SliderFloat("Create Object size Y", &(_create->_size[1]), 0.1f, 50.0f)) creatChanged = true;
-                if (ImGui::SliderFloat("Create Object size Z", &(_create->_size[2]), 0.1f, 50.0f)) creatChanged = true;
+                ImGui::Text("Create Object");
+                ImGui::SliderFloat("pos X", &(_create->_pos[0]), -200.0f, 200.0f);
+                ImGui::SliderFloat("pos Y", &(_create->_pos[1]), -200.0f, 200.0f);
+                ImGui::SliderFloat("pos Z", &(_create->_pos[2]), -200.0f, 200.0f);
+                if (ImGui::SliderFloat("size X", &(_create->_size[0]), 0.1f, 50.0f)) creatChanged = true;
+                if (ImGui::SliderFloat("size Y", &(_create->_size[1]), 0.1f, 50.0f)) creatChanged = true;
+                if (ImGui::SliderFloat("size Z", &(_create->_size[2]), 0.1f, 50.0f)) creatChanged = true;
 
                 if (creatChanged)
                 {
