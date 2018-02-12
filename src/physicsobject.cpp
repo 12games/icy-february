@@ -470,7 +470,7 @@ CharacterObject *PhysicsObjectBuilder::BuildCharacter()
 
     obj->_rigidBody->setFriction(_friction);
     obj->_rigidBody->setDamping(_linearDamping, _angularDamping);
-    //    obj->_rigidBody->setAngularFactor(btVector3(0,0,1));
+    obj->_rigidBody->setAngularFactor(btVector3(0, 0, 1));
 
     _manager.AddObject((ImplPhysicsObject *)obj);
 

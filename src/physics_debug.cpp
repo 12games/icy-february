@@ -48,6 +48,7 @@ void DebugDrawer::render(glm::mat4 const &proj, glm::mat4 const &view)
 
     _shader.use();
     _shader.setupMatrices(proj, view, glm::mat4(1.0f));
+    _shader.setupColor(glm::vec4(255.0f));
     _buffer.render();
 }
 

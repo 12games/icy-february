@@ -138,7 +138,7 @@ bool IcyFebruary::Setup()
     _characterObject = PhysicsObjectBuilder(_physics)
                            .Capsule(1.0f, 2.2f, glm::vec3(0.0f, -1.5f, 0.0f))
                            .InitialPosition(glm::vec3(0.0f, 0.0f, 1.0f))
-                           .Mass(1000.0f)
+                           .Mass(10.0f)
                            .BuildCharacter();
 
     PhysicsObjectBuilder(_physics)
@@ -253,6 +253,13 @@ void IcyFebruary::Render()
     {
         _create->_shader.use();
         _create->_shader.setupMatrices(_proj, _view, glm::translate(glm::mat4(1.0f), _create->_pos));
+
+        glDisable(GL_DEPTH_TEST);
+        _create->_shader.setupColor(glm::vec4(0.0f));
+        _create->_buffer.render();
+
+        glEnable(GL_DEPTH_TEST);
+        _create->_shader.setupColor(glm::vec4(255.0f));
         _create->_buffer.render();
     }
 }
@@ -283,9 +290,9 @@ void IcyFebruary::RenderUi()
             {
                 bool creatChanged = false;
                 ImGui::Text("Create Object");
-                ImGui::SliderFloat("pos X", &(_create->_pos[0]), -200.0f, 200.0f);
-                ImGui::SliderFloat("pos Y", &(_create->_pos[1]), -200.0f, 200.0f);
-                ImGui::SliderFloat("pos Z", &(_create->_pos[2]), -200.0f, 200.0f);
+                ImGui::SliderFloat("pos X", &(_create->_pos[0]), -40.0f, 40.0f);
+                ImGui::SliderFloat("pos Y", &(_create->_pos[1]), -30.0f, 30.0f);
+                ImGui::SliderFloat("pos Z", &(_create->_pos[2]), -20.0f, 80.0f);
                 if (ImGui::SliderFloat("size X", &(_create->_size[0]), 0.1f, 50.0f)) creatChanged = true;
                 if (ImGui::SliderFloat("size Y", &(_create->_size[1]), 0.1f, 50.0f)) creatChanged = true;
                 if (ImGui::SliderFloat("size Z", &(_create->_size[2]), 0.1f, 50.0f)) creatChanged = true;
@@ -304,9 +311,8 @@ void IcyFebruary::RenderUi()
                             .Mass(0.0f)
                             .Build();
 
-                        _create->_size = glm::vec3(5.0f);
-                        _create->_pos = glm::vec3(0.0f);
-                        _create->rebuildBuffer();
+                        _createdObjects.push_back(_create);
+                        _create = nullptr;
                     }
                 }
             }

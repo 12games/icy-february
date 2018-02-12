@@ -6,8 +6,8 @@
 
 #include "game.h"
 #include "gl-color-normal-position-vertex.h"
-#include <gl-color-position-vertex.h>
 #include "physics.h"
+#include <gl-color-position-vertex.h>
 
 #include <string>
 
@@ -48,6 +48,7 @@ class IcyFebruary : public Game
     CharacterObject *_characterObject;
     BufferType _fridge;
     CreationObject *_create;
+    std::vector<CreationObject *> _createdObjects;
 
     unsigned int uploadTexture(std::string const &filename);
 

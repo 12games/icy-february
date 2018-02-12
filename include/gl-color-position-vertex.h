@@ -27,10 +27,12 @@ class ShaderType
     GLuint _projectionUniformId;
     GLuint _viewUniformId;
     GLuint _modelUniformId;
+    GLuint _colorUniformId;
 
     std::string _projectionUniformName;
     std::string _viewUniformName;
     std::string _modelUniformName;
+    std::string _colorUniformName;
 
     std::string _vertexAttributeName;
     std::string _colorAttributeName;
@@ -39,8 +41,8 @@ class ShaderType
 
 public:
     ShaderType()
-        : _shaderId(0), _projectionUniformId(0), _viewUniformId(0), _modelUniformId(0),
-          _projectionUniformName("u_projection"), _viewUniformName("u_view"), _modelUniformName("u_model"),
+        : _shaderId(0), _projectionUniformId(0), _viewUniformId(0), _modelUniformId(0), _colorUniformId(0),
+          _projectionUniformName("u_projection"), _viewUniformName("u_view"), _modelUniformName("u_model"), _colorUniformName("u_color"),
           _vertexAttributeName("vertex"), _colorAttributeName("color")
     {}
 
@@ -78,6 +80,7 @@ public:
             _projectionUniformId = glGetUniformLocation(_shaderId, _projectionUniformName.c_str());
             _viewUniformId = glGetUniformLocation(_shaderId, _viewUniformName.c_str());
             _modelUniformId = glGetUniformLocation(_shaderId, _modelUniformName.c_str());
+            _colorUniformId = glGetUniformLocation(_shaderId, _colorUniformName.c_str());
 
             return true;
         }
@@ -103,12 +106,14 @@ public:
         std::string const fshader(
             "#version 150\n"
 
+            "uniform vec4 u_color;\n"
+
             "in vec4 f_color;"
             "out vec4 color;"
 
             "void main()"
             "{"
-            "   color = f_color;"
+            "   color = f_color * u_color;"
             "}");
 
         if (!compile(vshader, fshader))
@@ -185,6 +190,7 @@ public:
         _projectionUniformId = glGetUniformLocation(_shaderId, _projectionUniformName.c_str());
         _viewUniformId = glGetUniformLocation(_shaderId, _viewUniformName.c_str());
         _modelUniformId = glGetUniformLocation(_shaderId, _modelUniformName.c_str());
+        _colorUniformId = glGetUniformLocation(_shaderId, _colorUniformName.c_str());
 
         return true;
     }
@@ -204,6 +210,13 @@ public:
 
         glUniformMatrix4fv(_projectionUniformId, 1, false, glm::value_ptr(projectionView));
         glUniformMatrix4fv(_modelUniformId, 1, false, glm::value_ptr(model));
+    }
+
+    void setupColor(glm::vec4 const &color)
+    {
+        use();
+
+        glUniform4fv(_colorUniformId, 1, glm::value_ptr(color));
     }
 
     void setupAttributes() const
